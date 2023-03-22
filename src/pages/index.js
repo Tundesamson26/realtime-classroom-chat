@@ -1,11 +1,106 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from '@/styles/Home.module.css'
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react/jsx-key */
+import Head from "next/head";
+import { useState, useEffect } from "react";
+import "@appwrite.io/pink";
+import { createAnonymousSession } from "@/utils/web-init";
+import { Client, Databases } from "appwrite";
+import ReactPlayer from "react-player";
+import { generateUsername } from "unique-username-generator";
 
-const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+  const [username, setUsername] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState("");
+
+
+  const client = new Client();
+  client
+    .setEndpoint("https://cloud.appwrite.io/v1")
+    .setProject("6418bee334000708b0ce");
+
+  const databases = new Databases(client);
+
+  const createChatIfNotExist = async (e) => {
+    console.log("Adding user", message);
+    const promise = databases.createDocument(
+      "6418bf5a278b4799614b",
+      "6418bf6c38a6c826cc21",
+      "general-chat",
+      {
+        username: username,
+        messages:[...messages,message]
+      }
+    );
+    promise.then(function (response) {
+      console.log("runnner", response); // Success
+  }, function (error) {
+      console.log(error); // Failure
+       databases.updateDocument(
+        "6418bf5a278b4799614b",
+        "6418bf6c38a6c826cc21",
+        "general-chat",
+        {
+          username: username,
+          messages:[...messages,message],
+        }
+      );
+  });
+  };
+
+  useEffect(() => {
+    if (!username) {
+      const _username = localStorage.getItem("username") || generateUsername();
+      localStorage.setItem("username", _username);
+      console.log(_username);
+      setUsername(_username);
+    }
+  }, [username]);
+
+
+  const getDocument=async()=>{
+    const result =await databases.getDocument(
+      "6418bf5a278b4799614b",
+      "6418bf6c38a6c826cc21",
+      "general-chat"
+    );
+    return result
+  }
+
+  useEffect(() => {
+    const run=async()=>{
+
+      const data=await getDocument()
+      setMessages(data.messages)
+    }
+    run()
+  }, [])
+  
+
+  useEffect(() => {
+    console.log("anything")
+    // Subscribe to collection channel
+    const _subscribe = client.subscribe(
+      "databases.6418bf5a278b4799614b.collections.6418bf6c38a6c826cc21.documents",
+      (response) => {
+        console.log("iiiii",response);
+        const { payload } = response;
+        if (payload?.$id === "general-chat") {
+          setMessages(payload.messages);
+        }
+       
+      }
+    );
+    return () => {
+      _subscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    createAnonymousSession();
+  }, []);
+
   return (
     <>
       <Head>
@@ -14,110 +109,57 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>src/pages/index.js</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
+      <main className="container u-height-100-percent u-main-center">
+        <div className="u-main-center">
+          <ReactPlayer
+            style={{ maxWidth: "500px", minHeight: "200px", margin: "auto", paddingBottom: "10px" }}
+            url="https://www.youtube.com/watch?v=xO9QDQaVHxU"
           />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
-            />
-          </div>
         </div>
+        <div className="card" style={{ maxWidth: "500px", margin: "auto" }}>
+          <div className="">
+            <div className="u-text-center u-bold">Classroom Chat</div>
+          </div>
 
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
+          <ul className="u-padding-24" style={{ minHeight: "300px" }}>
+            {messages.map((message) => {
+              return (
+                <li className="message">
+                  <div className="message_wrapper">
+                    <div>{username}</div>
+                    <div className="">{message}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
 
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
+          <div className="">
+            <div
+              className="u-flex"
+              style={{ maxWidth: "400px" }}
+            >
+              <div className="input">
+                <input
+                  id="message-text-field"
+                  className="u-max-width-500"
+                  type="text"
+                  placeholder="Type your message here..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                className="button"
+                onClick={createChatIfNotExist}
+              >
+                Send
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </>
-  )
+  );
 }
